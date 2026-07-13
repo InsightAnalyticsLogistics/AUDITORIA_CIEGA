@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auditoría Ciega</title>
+  <link rel="stylesheet" href="./css/styles.css">
+</head>
+<body>
+  <div id="app">
+
+    <header class="topbar">
+      <div class="brand">
+        <h1>AUDITORÍA CIEGA</h1>
+        <p id="appSubtitle">Control de órdenes y auditoría ciega</p>
+      </div>
+
+      <div class="topbar-center">
+        <div id="sessionInfo" class="session-info"></div>
+      </div>
+
+      <div class="topbar-actions">
+        <button id="btnGoAdmin" class="btn btn-secondary hidden" type="button">Admin</button>
+        <button id="btnGoAuditor" class="btn btn-secondary hidden" type="button">Auditor</button>
+        <button id="btnLogout" class="btn btn-danger hidden" type="button">Salir</button>
+      </div>
+    </header>
+
+    <main class="main-content">
+
+      <!-- LOGIN -->
+       
+<section id="view-login" class="view active">
+  <div class="card auth-card">
+    <h2>Ingreso al sistema</h2>
+    <p>Ingrese usuario y clave para continuar.</p>
+
+    <form id="loginForm" autocomplete="off">
+      <div class="form-group">
+        <label for="usuario">Usuario</label>
+        <input type="text" id="usuario" name="usuario" placeholder="Ingrese su usuario" autocomplete="off" required>
+      </div>
+      <div class="form-group">
+        <label for="clave">Clave</label>
+        <input type="password" id="clave" name="clave" placeholder="Ingrese su clave" autocomplete="new-password" required>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block">Ingresar</button>
+    </form>
+
+    <div id="loginMessage" class="message"></div>
+  </div>
+</section>
+
+<!-- ADMIN DASHBOARD -->
+<section id="view-admin-dashboard" class="view hidden">
+  <div class="dashboard-hero">
+    <div class="hero-panel">
+      <span class="hero-tag">MÓDULO OPERATIVO</span>
+      <h2>Tracker global de órdenes</h2>
+      <p>Consulte, filtre y gestione los pedidos cargados en el sistema.</p>
+    </div>
+
+    <div class="hero-stat">
+      <span class="hero-stat-label">ESTADO</span>
+      <strong id="adminTotalOrdenes">0 órdenes</strong>
+    </div>
+  </div>
+
+<div id="adminEstadoFilters" class="status-filter-bar">
+  <button id="btnEstadoPendiente" class="estado-filter-btn estado-pendiente" type="button" data-estado="PENDIENTE">
+    <span class="estado-label">Pendiente</span>
+    <span id="countPendiente" class="estado-count">0</span>
+  </button>
+
+  <button id="btnEstadoProgreso" class="estado-filter-btn estado-progreso" type="button" data-estado="EN PROGRESO">
+    <span class="estado-label">En Progreso</span>
+    <span id="countProgreso" class="estado-count">0</span>
+  </button>
+
+  <button id="btnEstadoConforme" class="estado-filter-btn estado-conforme" type="button" data-estado="CONFORME">
+    <span class="estado-label">Conforme</span>
+    <span id="countConforme" class="estado-count">0</span>
+  </button>
+
+  <button id="btnEstadoNoConforme" class="estado-filter-btn estado-noconforme" type="button" data-estado="NO CONFORME">
+    <span class="estado-label">No Conforme</span>
+    <span id="countNoConforme" class="estado-count">0</span>
+  </button>
+</div>
+
+  <div class="card filters-card-pro">
+    <div class="filters-grid-pro">
+      <div class="form-group">
+        <label for="adminFilterFecha">Fecha</label>
+        <input type="date" id="adminFilterFecha">
+      </div>
+
+      <div class="form-group">
+        <label for="adminFilterGrupo">Grupo</label>
+        <input type="text" id="adminFilterGrupo" placeholder="Filtrar grupo">
+      </div>
+
+      <div class="form-group">
+        <label for="adminFilterOrden">Orden</label>
+        <input type="text" id="adminFilterOrden" placeholder="Filtrar orden">
+      </div>
+
+      <div class="filters-actions-pro">
+        <button id="btnAdminApplyFilters" class="btn btn-primary btn-icon" type="button">
+          <span class="btn-svg">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="7"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </span>
+          <span>Buscar</span>
+        </button>
+
+        <button id="btnAdminClearFilters" class="btn btn-light btn-icon" type="button">
+          <span class="btn-svg">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="1 4 1 10 7 10"></polyline>
+              <path d="M3.51 15a9 9 0 1 0 .49-9"></path>
+            </svg>
+          </span>
+          <span>Limpiar</span>
+        </button>
+
+        <button id="btnAdminRefresh" class="btn btn-secondary" type="button">Actualizar</button>
+        <button id="btnGoUpload" class="btn btn-primary" type="button">Cargar plantilla</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Estado</th>
+            <th>Fecha</th>
+            <th>Grupo</th>
+            <th>Orden</th>
+            <th>Líneas</th>
+            <th>Registrado</th>
+            <th>1er Conteo</th>
+            <th>2do Conteo</th>
+            <th>3er Conteo</th>
+            <th>Auditor</th>
+            <th>Comentario</th>
+            <th>Detalle</th>
+            <th>Eliminar</th>
+          </tr>
+        </thead>
+        <tbody id="adminOrdersBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+      <!-- ADMIN DETALLE ORDEN -->
+<section id="view-admin-detail" class="view hidden">
+<div class="detail-hero">
+  <div class="detail-hero-main">
+    <span class="hero-tag">DETALLE DE ORDEN</span>
+    <h2 id="adminDetailOrderTitle">Orden</h2>
+    <p class="detail-hero-subtitle">Consulta integral del estado, conteos y trazabilidad del pedido.</p>
+  </div>
+
+  <div class="detail-hero-actions">
+    <button id="btnReiniciarOrden" class="btn btn-danger" type="button">Reiniciar</button>
+    <button id="btnAbrirSegundoConteo" class="btn btn-primary hidden" type="button">Abrir 2do conteo</button>
+    <button id="btnAbrirTercerConteo" class="btn btn-danger hidden" type="button">Abrir 3er conteo</button>
+    <button id="btnBackAdminDashboard" class="btn btn-secondary" type="button">Volver</button>
+  </div>
+</div>
+
+<div class="card detail-summary-card">
+  <div class="detail-summary-grid">
+    <div class="summary-box">
+      <span class="summary-label">Estado</span>
+      <strong id="detailEstado"></strong>
+    </div>
+    <div class="summary-box">
+      <span class="summary-label">Grupo</span>
+      <strong id="detailGrupo"></strong>
+    </div>
+    <div class="summary-box">
+      <span class="summary-label">Orden</span>
+      <strong id="detailOrden"></strong>
+    </div>
+    <div class="summary-box">
+      <span class="summary-label">Fecha carga</span>
+      <strong id="detailFechaCarga"></strong>
+    </div>
+    <div class="summary-box">
+      <span class="summary-label">Auditor asignado</span>
+      <strong id="detailAuditorAsignado"></strong>
+    </div>
+    <div class="summary-box">
+      <span class="summary-label">Fecha inicio</span>
+      <strong id="detailFechaInicio"></strong>
+    </div>
+    <div class="summary-box">
+      <span class="summary-label">Fecha fin</span>
+      <strong id="detailFechaFin"></strong>
+    </div>
+    <div class="summary-box summary-box-wide">
+      <span class="summary-label">Comentario</span>
+      <strong id="detailComentarioAdmin"></strong>
+    </div>
+  </div>
+</div>
+
+  <div class="card">
+    <h3>Resumen de líneas</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Lote</th>
+            <th>F.V.</th>
+            <th>EAN13</th>
+            <th>Inner</th>
+            <th>EAN14</th>
+            <th>Descripción</th>
+            <th>Cantidad</th>
+            <th>1er Conteo</th>
+            <th>2do Conteo</th>
+            <th>3er Conteo</th>
+            <th>Estado Línea</th>
+            <th>Estado Lote</th>
+          </tr>
+        </thead>
+        <tbody id="adminOrderLinesBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Registros de auditoría</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Conteo</th>
+            <th>Auditor</th>
+            <th>Tag/Paleta</th>
+            <th>Escaneado</th>
+            <th>Código</th>
+            <th>Cantidad</th>
+            <th>Lote</th>
+            <th>Priorizado</th>
+            <th>Resultado</th>
+            <th>Comentario</th>
+          </tr>
+        </thead>
+        <tbody id="adminOrderAuditBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+      <!-- ADMIN CARGA PLANTILLA -->
+      <section id="view-admin-upload" class="view hidden">
+        <div class="page-header">
+          <div>
+            <h2>Carga de plantilla</h2>
+            <p>Importe la plantilla y revise la vista previa antes de guardar.</p>
+          </div>
+          <div class="page-actions">
+            <button id="btnBackFromUpload" class="btn btn-secondary" type="button">Volver</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="form-group">
+            <label for="filePlantilla">Archivo de plantilla</label>
+            <input type="file" id="filePlantilla" accept=".xlsx,.xls,.csv">
+          </div>
+
+          <div class="actions-row">
+            <button id="btnPreviewPlantilla" class="btn btn-secondary" type="button">Vista previa</button>
+            <button id="btnGuardarPlantilla" class="btn btn-primary" type="button">Guardar plantilla</button>
+          </div>
+
+          <div id="uploadMessage" class="message"></div>
+        </div>
+
+        <div class="card">
+          <h3>Vista previa</h3>
+          <div class="table-wrap">
+            <table>
+              <thead id="uploadPreviewHead"></thead>
+              <tbody id="uploadPreviewBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- AUDITOR DASHBOARD -->
+<section id="view-auditor-dashboard" class="view hidden">
+  <div class="tracker-hero">
+  <div class="tracker-hero-main">
+    <span class="hero-tag">PANEL AUDITOR</span>
+    <h2>Tracker de órdenes</h2>
+    <p>Seleccione una orden pendiente o una orden en progreso asignada a su usuario.</p>
+  </div>
+
+  <div class="tracker-hero-actions">
+    <button id="btnAuditorRefresh" class="btn btn-secondary" type="button">Actualizar</button>
+  </div>
+</div>
+
+<div class="tracker-status-bar">
+  <span class="badge badge-pendiente">Pendiente</span>
+  <span class="badge badge-progreso">En Progreso</span>
+  <span class="badge badge-conforme">Conforme</span>
+  <span class="badge badge-noconforme">No Conforme</span>
+</div>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>N°</th>
+            <th>Estado</th>
+            <th>Fecha</th>
+            <th>Grupo</th>
+            <th>Orden</th>
+            <th>Abrir</th>
+          </tr>
+        </thead>
+        <tbody id="auditorOrdersBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+      <!-- AUDITOR REGISTRO CIEGO -->
+<section id="view-auditor-capture" class="view hidden">
+  <div class="capture-hero">
+  <div class="capture-hero-main">
+    <span class="hero-tag">AUDITORÍA CIEGA</span>
+    <h2 id="captureOrderTitle">Orden</h2>
+    <p id="captureOrderMeta" class="capture-hero-meta">Registro de auditoría ciega</p>
+  </div>
+
+  <div class="capture-hero-actions">
+    <button id="btnBackAuditorDashboard" class="btn btn-secondary" type="button">Volver</button>
+  </div>
+</div>
+
+<div class="card capture-main-card">
+  <div class="capture-toolbar">
+    <button id="btnAddCaptureRow" class="btn btn-secondary" type="button">Agregar fila</button>
+    <button id="btnSaveCaptureRows" class="btn btn-primary" type="button">Guardar pedido</button>
+  </div>
+
+  <div class="table-wrap capture-table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Ndeg</th>
+          <th>TAG ID / Paleta</th>
+          <th>Código / EAN</th>
+          <th>Código identificado</th>
+          <th>Cantidad</th>
+          <th>Lote</th>
+          <th>Acción</th>
+        </tr>
+      </thead>
+      <tbody id="captureGridBody"></tbody>
+    </table>
+  </div>
+
+  <div class="capture-comment-box">
+    <label for="captureComentarioGlobal">Comentario general del pedido</label>
+    <textarea id="captureComentarioGlobal" rows="3" placeholder="Ingrese un comentario general si aplica"></textarea>
+  </div>
+
+  <div id="captureMessage" class="message"></div>
+</div>
+
+  <div class="card">
+    <h3>Registros guardados de la orden</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Ndeg</th>
+            <th>Fecha</th>
+            <th>Conteo</th>
+            <th>TAG ID / Paleta</th>
+            <th>Código / EAN</th>
+            <th>Código identificado</th>
+            <th>Cantidad</th>
+            <th>Lote</th>
+            <th>Priorizado</th>
+            <th>Resultado</th>
+            <th>Comentario</th>
+          </tr>
+        </thead>
+        <tbody id="captureHistoryBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+    </main>
+  </div>
+  <div id="appModal" class="app-modal hidden">
+  <div class="app-modal-card">
+    <div id="appModalSpinner" class="app-modal-spinner hidden"></div>
+    <div id="appModalMessage" class="app-modal-message">Procesando...</div>
+  </div>
+</div>
+<div id="confirmModal" class="app-modal hidden">
+  <div class="app-modal-card confirm-modal-card">
+    <div id="confirmModalMessage" class="app-modal-message">
+      ¿Está seguro de reiniciar esta orden?
+    </div>
+    <div class="confirm-modal-actions">
+      <button id="btnConfirmModalCancel" class="btn btn-secondary" type="button">Cancelar</button>
+      <button id="btnConfirmModalAccept" class="btn btn-danger" type="button">Aceptar</button>
+    </div>
+  </div>
+</div>
+
+<script src="./js/api.js"></script>
+<script src="./js/app.js"></script>
+
+</body>
+</html>
