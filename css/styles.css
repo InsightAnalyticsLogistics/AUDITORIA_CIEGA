@@ -925,3 +925,23 @@ body.login-background .auth-card {
     grid-column:auto;
   }
 }
+.btn-open-disabled{
+  background:#e5e7eb !important;
+  color:#6b7280 !important;
+  cursor:not-allowed !important;
+  opacity:.9;
+}
+
+.btn-open-disabled:hover{
+  transform:none !important;
+  opacity:.9 !important;
+}
+.duplicate-modal-card{
+  width: 95%;
+  max-width: 1000px;
+  text-align: left;
+}
+
+#duplicateOrdersBody{
+  margin-top: 14px;
+}
