@@ -117,3 +117,7 @@ function apiImportarPlantillaTemporal(token, tempSpreadsheetId, duplicateMode) {
 function apiReiniciarOrdenAdmin_(token, orden) {
   return apiRequest('reiniciarOrdenAdmin', { token, orden });
 }
+
+function apiExportarRegistroVerificacion(token) {
+  return apiRequest('exportarRegistroVerificacion', { token });
+}
