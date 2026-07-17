@@ -106,9 +106,14 @@ function apiPreviewPlantillaExcel(token, fileName, base64) {
   return apiRequest('previewPlantillaExcel', { token, fileName, base64 });
 }
 
-function apiImportarPlantillaTemporal(token, tempSpreadsheetId) {
-  return apiRequest('importarPlantillaTemporal', { token, tempSpreadsheetId });
+function apiImportarPlantillaTemporal(token, tempSpreadsheetId, duplicateMode) {
+  return apiRequest('importarPlantillaTemporal', {
+    token,
+    tempSpreadsheetId,
+    duplicateMode
+  });
 }
+
 function apiReiniciarOrdenAdmin_(token, orden) {
   return apiRequest('reiniciarOrdenAdmin', { token, orden });
 }
