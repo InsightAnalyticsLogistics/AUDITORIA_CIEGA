@@ -8,7 +8,12 @@ const state = {
   pendingImportPreviewRows: [],
   captureRows: [],
   confirmAction: null,
-  adminEstadoFilter: ''
+  adminEstadoFilter: '',
+  auditorEstadoFilter: '',
+  pendingImportDuplicateMode: '',
+  pendingImportDuplicateOrders: [],
+  pendingImportTotalRows: 0
+
 };
 ;
 
@@ -33,6 +38,15 @@ function bindEvents_() {
   on_('btnGoAuditor', 'click', function () {
     loadAuditorDashboard_();
   });
+  on_('btnDuplicateModeAppend', 'click', function () {
+  applyDuplicateImportMode_('APPEND');
+});
+
+on_('btnDuplicateModeSkip', 'click', function () {
+  applyDuplicateImportMode_('SKIP');
+});
+
+on_('btnDuplicateModeCancel', 'click', closeDuplicateOrdersModal_);
 
   on_('btnAddCaptureRow', 'click', addCaptureRow_);
   on_('btnSaveCaptureRows', 'click', saveCaptureRows_);
@@ -61,6 +75,8 @@ function bindEvents_() {
   on_('btnGuardarPlantilla', 'click', guardarPlantillaPendiente_);
 
   on_('btnAuditorRefresh', 'click', loadAuditorOrders_);
+  on_('btnAuditorApplyFilters', 'click', applyAuditorFilters_);
+  on_('btnAuditorClearFilters', 'click', clearAuditorFilters_);
   on_('btnBackAuditorDashboard', 'click', function () {
     showView_('view-auditor-dashboard');
   });
@@ -93,14 +109,27 @@ if (adminEstadoFilters) {
   });
 }
 
-  var auditorBody = document.getElementById('auditorOrdersBody');
-  if (auditorBody) {
-    auditorBody.addEventListener('click', function (e) {
-      var btn = e.target.closest('.js-auditor-open-order');
-      if (!btn) return;
-      openAuditorOrder_(btn.dataset.orden || '');
-    });
-  }
+var auditorBody = document.getElementById('auditorOrdersBody');
+if (auditorBody) {
+  auditorBody.addEventListener('click', function (e) {
+    var btn = e.target.closest('.js-auditor-open-order');
+    if (!btn) return;
+    if (btn.disabled) return;
+    openAuditorOrder_(btn.dataset.orden || '');
+  });
+}
+var auditorEstadoFilters = document.getElementById('auditorEstadoFilters');
+if (auditorEstadoFilters) {
+  auditorEstadoFilters.addEventListener('click', function (e) {
+    var btn = e.target.closest('.estado-filter-btn');
+    if (!btn) return;
+
+    var estado = btn.dataset.estado || '';
+    state.auditorEstadoFilter = normalizeText_(estado);
+    updateAuditorEstadoButtons_();
+    applyAuditorFilters_();
+  });
+}
 
   var captureGridBody = document.getElementById('captureGridBody');
   if (captureGridBody) {
@@ -151,16 +180,31 @@ async function handleLogin_(e) {
 
 async function handleLogout_() {
   try {
+    showAppModal_('Cerrando sesión...', true);
+
     if (state.session && state.session.token) {
       await apiLogout(state.session.token);
     }
-  } catch (e) {}
 
-  hideAppModal_();
-  resetClientSession_();
-  updateTopbar_();
-  showView_('view-login');
-  focus_('usuario');
+    resetClientSession_();
+    updateTopbar_();
+    showView_('view-login');
+
+    setTimeout(function () {
+      hideAppModal_();
+      focus_('usuario');
+    }, 700);
+
+  } catch (e) {
+    resetClientSession_();
+    updateTopbar_();
+    showView_('view-login');
+
+    setTimeout(function () {
+      hideAppModal_();
+      focus_('usuario');
+    }, 700);
+  }
 }
 
 function resetClientSession_() {
@@ -173,6 +217,11 @@ function resetClientSession_() {
   state.pendingImportPreviewRows = [];
   state.captureRows = [];
   state.confirmAction = null;
+  state.pendingImportDuplicateMode = '';
+  state.pendingImportDuplicateOrders = [];
+  state.pendingImportTotalRows = 0;
+  setMessage_('uploadPreviewInfo', '');
+
 
   try {
     localStorage.removeItem('token');
@@ -284,13 +333,6 @@ function updateAdminEstadoButtons_() {
     var estado = normalizeText_(btn.dataset.estado || '');
     btn.classList.toggle('active', estado === state.adminEstadoFilter);
   });
-}
-
-function clearAdminFilters_() {
-  setValue_('adminFilterFecha', '');
-  setValue_('adminFilterGrupo', '');
-  setValue_('adminFilterOrden', '');
-  renderAdminOrders_(state.adminOrders);
 }
 
 function renderAdminOrders_(rows) {
@@ -500,10 +542,68 @@ async function loadAuditorOrders_() {
   try {
     var res = await apiListarOrdenesAuditor(state.session.token);
     state.auditorOrders = res.rows || [];
-    renderAuditorOrders_(state.auditorOrders);
+    updateAuditorEstadoCounters_();
+    updateAuditorEstadoButtons_();
+    applyAuditorFilters_();
+    setText_('auditorTotalOrdenes', state.auditorOrders.length + ' órdenes');
   } catch (err) {
     alert(err.message || 'Error cargando órdenes del auditor.');
   }
+}
+function applyAuditorFilters_() {
+  var fecha = value_('auditorFilterFecha');
+  var grupo = normalizeText_(value_('auditorFilterGrupo'));
+  var orden = normalizeText_(value_('auditorFilterOrden'));
+  var estado = state.auditorEstadoFilter || '';
+
+  var filtered = state.auditorOrders.filter(function (r) {
+    var okFecha = !fecha || toIsoDate_(r.fechaCarga) === fecha;
+    var okGrupo = !grupo || normalizeText_(r.grupo).indexOf(grupo) > -1;
+    var okOrden = !orden || normalizeText_(r.orden).indexOf(orden) > -1;
+    var okEstado = !estado || normalizeText_(r.estado) === estado;
+
+    return okFecha && okGrupo && okOrden && okEstado;
+  });
+
+  renderAuditorOrders_(filtered);
+}
+
+function clearAuditorFilters_() {
+  setValue_('auditorFilterFecha', '');
+  setValue_('auditorFilterGrupo', '');
+  setValue_('auditorFilterOrden', '');
+  state.auditorEstadoFilter = '';
+  updateAuditorEstadoButtons_();
+  renderAuditorOrders_(state.auditorOrders);
+}
+
+function updateAuditorEstadoCounters_() {
+  var counts = {
+    PENDIENTE: 0,
+    'EN PROGRESO': 0,
+    CONFORME: 0,
+    'NO CONFORME': 0
+  };
+
+  state.auditorOrders.forEach(function (r) {
+    var estado = normalizeText_(r.estado);
+    if (counts.hasOwnProperty(estado)) {
+      counts[estado]++;
+    }
+  });
+
+  setText_('countAudPendiente', counts['PENDIENTE']);
+  setText_('countAudProgreso', counts['EN PROGRESO']);
+  setText_('countAudConforme', counts['CONFORME']);
+  setText_('countAudNoConforme', counts['NO CONFORME']);
+}
+
+function updateAuditorEstadoButtons_() {
+  var buttons = document.querySelectorAll('#auditorEstadoFilters .estado-filter-btn');
+  buttons.forEach(function (btn) {
+    var estado = normalizeText_(btn.dataset.estado || '');
+    btn.classList.toggle('active', estado === state.auditorEstadoFilter);
+  });
 }
 
 function renderAuditorOrders_(rows) {
@@ -516,8 +616,6 @@ function renderAuditorOrders_(rows) {
   }
 
   tbody.innerHTML = rows.map(function (r, i) {
-    var accion = normalizeText_(r.estado) === 'EN PROGRESO' ? 'Continuar' : 'Abrir';
-
     return `
       <tr class="${rowStatusClass_(r.estado)}">
         <td>${i + 1}</td>
@@ -526,8 +624,13 @@ function renderAuditorOrders_(rows) {
         <td>${esc_(r.grupo || '')}</td>
         <td>${esc_(r.orden || '')}</td>
         <td>
-          <button class="btn btn-primary js-auditor-open-order" type="button" data-orden="${escAttr_(r.orden || '')}">
-            ${accion}
+          <button
+            class="btn ${r.puedeAbrir ? 'btn-primary' : 'btn-open-disabled'} js-auditor-open-order"
+            type="button"
+            data-orden="${escAttr_(r.orden || '')}"
+            ${r.puedeAbrir ? '' : 'disabled'}
+          >
+            ${esc_(r.accion || 'Bloqueado')}
           </button>
         </td>
       </tr>
@@ -665,6 +768,8 @@ function previewPlantilla_() {
 
   reader.onload = async function (e) {
     try {
+      showAppModal_('Analizando archivo...', true);
+
       var result = String(e.target.result || '');
       var base64 = result.split(',')[1] || '';
 
@@ -676,24 +781,134 @@ function previewPlantilla_() {
 
       state.pendingImportTempId = res.tempSpreadsheetId || '';
       state.pendingImportPreviewRows = res.previewRows || [];
+      state.pendingImportDuplicateOrders = res.duplicateOrderDetails || [];
+      state.pendingImportTotalRows = res.total || 0;
+      state.pendingImportDuplicateMode = '';
 
-      renderPreviewRows_(state.pendingImportPreviewRows);
-      setMessage_(
-        'uploadMessage',
-        'Vista previa generada. Filas detectadas: ' + (res.total || 0),
-        'success'
-      );
+      hideAppModal_();
+
+      if (state.pendingImportDuplicateOrders.length > 0) {
+        showDuplicateOrdersModal_();
+      } else {
+        state.pendingImportDuplicateMode = 'APPEND';
+        renderPreviewRows_();
+        renderUploadPreviewInfo_();
+
+        setMessage_(
+          'uploadMessage',
+          'Vista previa generada. No se detectaron órdenes duplicadas.',
+          'success'
+        );
+      }
 
     } catch (err) {
+      hideAppModal_();
       state.pendingImportTempId = '';
       state.pendingImportPreviewRows = [];
+      state.pendingImportDuplicateOrders = [];
+      state.pendingImportTotalRows = 0;
+      state.pendingImportDuplicateMode = '';
+
       setHTML_('uploadPreviewHead', '');
       setHTML_('uploadPreviewBody', '<tr><td>Error procesando archivo.</td></tr>');
+      setMessage_('uploadPreviewInfo', '');
       setMessage_('uploadMessage', err.message || 'Error procesando archivo Excel.', 'error');
     }
   };
 
   reader.readAsDataURL(file);
+}
+function showDuplicateOrdersModal_() {
+  var modal = document.getElementById('duplicateOrdersModal');
+  var body = document.getElementById('duplicateOrdersBody');
+
+  if (!modal || !body) return;
+
+  var rows = state.pendingImportDuplicateOrders || [];
+
+  body.innerHTML = rows.length ? `
+    <p>Se detectaron órdenes que ya existen en la base de datos.</p>
+    <p>Seleccione cómo desea tratarlas. La vista previa mostrará exactamente lo que se procesará al guardar.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Orden</th>
+            <th>Líneas en archivo</th>
+            <th>Líneas actuales</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(function (r) {
+            return `
+              <tr>
+                <td>${esc_(r.orden || '')}</td>
+                <td>${esc_(r.incomingLines || 0)}</td>
+                <td>${esc_(r.existingLines || 0)}</td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  ` : '<p>No se detectaron órdenes duplicadas.</p>';
+
+  modal.classList.remove('hidden');
+}
+
+function closeDuplicateOrdersModal_() {
+  toggleHidden_('duplicateOrdersModal', true);
+}
+
+function applyDuplicateImportMode_(mode) {
+  state.pendingImportDuplicateMode = mode;
+  closeDuplicateOrdersModal_();
+  renderPreviewRows_();
+  renderUploadPreviewInfo_();
+
+  if (mode === 'APPEND') {
+    setMessage_(
+      'uploadMessage',
+      'Se incluirán las órdenes duplicadas y se intentará agregar solo líneas nuevas.',
+      'info'
+    );
+  } else {
+    setMessage_(
+      'uploadMessage',
+      'Se excluirán de la carga todas las filas de órdenes duplicadas.',
+      'info'
+    );
+  }
+}
+
+function renderUploadPreviewInfo_() {
+  var rows = state.pendingImportPreviewRows || [];
+  var mode = state.pendingImportDuplicateMode || 'APPEND';
+  var processCount = 0;
+  var skipCount = 0;
+  var duplicateOrders = {};
+
+  rows.forEach(function (r) {
+    var isDuplicate = !!r.esOrdenDuplicada;
+
+    if (isDuplicate) {
+      duplicateOrders[r.orden] = true;
+    }
+
+    var process = !isDuplicate || mode === 'APPEND';
+
+    if (process) processCount++;
+    else skipCount++;
+  });
+
+  setMessage_(
+    'uploadPreviewInfo',
+    'Total filas: ' + rows.length +
+    ' | Filas a procesar: ' + processCount +
+    ' | Filas excluidas: ' + skipCount +
+    ' | Órdenes duplicadas: ' + Object.keys(duplicateOrders).length,
+    'info'
+  );
 }
 
 async function guardarPlantillaPendiente_() {
@@ -702,29 +917,57 @@ async function guardarPlantillaPendiente_() {
     return;
   }
 
+  if (state.pendingImportDuplicateOrders.length > 0 && !state.pendingImportDuplicateMode) {
+    setMessage_('uploadMessage', 'Debe seleccionar cómo tratar las órdenes duplicadas.', 'error');
+    return;
+  }
+
   try {
-    var res = await apiImportarPlantillaTemporal(state.session.token, state.pendingImportTempId);
+    showAppModal_('Guardando plantilla...', true);
+
+    var res = await apiImportarPlantillaTemporal(
+      state.session.token,
+      state.pendingImportTempId,
+      state.pendingImportDuplicateMode || 'APPEND'
+    );
+
+    hideAppModal_();
 
     setMessage_(
       'uploadMessage',
-      'Importación completada. Nuevas: ' + res.inserted + ' | Actualizadas: ' + res.updated,
+      res.message +
+      ' Nuevas líneas: ' + res.inserted +
+      ' | Órdenes nuevas: ' + res.createdOrders +
+      ' | Órdenes existentes actualizadas: ' + res.updated +
+      ' | Filas omitidas: ' + res.skippedRows,
       'success'
     );
 
     state.pendingImportTempId = '';
     state.pendingImportPreviewRows = [];
+    state.pendingImportDuplicateOrders = [];
+    state.pendingImportDuplicateMode = '';
+    state.pendingImportTotalRows = 0;
+
     setValue_('filePlantilla', '');
+    setMessage_('uploadPreviewInfo', '');
+    setHTML_('uploadPreviewHead', '');
+    setHTML_('uploadPreviewBody', '');
 
     await loadAdminOrders_();
     showView_('view-admin-dashboard');
 
   } catch (err) {
+    hideAppModal_();
     setMessage_('uploadMessage', err.message || 'Error importando plantilla.', 'error');
   }
 }
 
-function renderPreviewRows_(rows) {
-  if (!rows || !rows.length) {
+function renderPreviewRows_() {
+  var rows = state.pendingImportPreviewRows || [];
+  var mode = state.pendingImportDuplicateMode || 'APPEND';
+
+  if (!rows.length) {
     setHTML_('uploadPreviewHead', '');
     setHTML_('uploadPreviewBody', '<tr><td>No se encontraron filas válidas.</td></tr>');
     return;
@@ -733,6 +976,8 @@ function renderPreviewRows_(rows) {
   setHTML_(
     'uploadPreviewHead',
     '<tr>' +
+      '<th>Procesar</th>' +
+      '<th>Observación</th>' +
       '<th>Grupo</th>' +
       '<th>Orden</th>' +
       '<th>SKU</th>' +
@@ -749,8 +994,20 @@ function renderPreviewRows_(rows) {
   );
 
   var previewRows = rows.map(function (r) {
+    var isDuplicate = !!r.esOrdenDuplicada;
+    var process = !isDuplicate || mode === 'APPEND';
+
+    var observacion = 'ORDEN NUEVA';
+    if (isDuplicate && mode === 'APPEND') {
+      observacion = 'ORDEN EXISTENTE: SE AGREGARÁN SOLO LÍNEAS NUEVAS';
+    } else if (isDuplicate && mode === 'SKIP') {
+      observacion = 'ORDEN DUPLICADA: SE EXCLUIRÁ';
+    }
+
     return `
-      <tr>
+      <tr class="${process ? '' : 'row-noconforme'}">
+        <td>${process ? 'SI' : 'NO'}</td>
+        <td>${esc_(observacion)}</td>
         <td>${esc_(r.grupo)}</td>
         <td>${esc_(r.orden)}</td>
         <td>${esc_(r.sku)}</td>
