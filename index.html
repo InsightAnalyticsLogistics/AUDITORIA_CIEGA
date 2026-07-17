@@ -289,7 +289,25 @@
           </div>
 
           <div id="uploadMessage" class="message"></div>
+          <div id="uploadPreviewInfo" class="message info"></div>
         </div>
+<div id="duplicateOrdersModal" class="app-modal hidden">
+  <div class="app-modal-card duplicate-modal-card">
+    <h3>Órdenes duplicadas detectadas</h3>
+    <div id="duplicateOrdersBody"></div>
+    <div class="confirm-modal-actions">
+      <button id="btnDuplicateModeAppend" class="btn btn-primary" type="button">
+        Sí, continuar y agregar líneas nuevas
+      </button>
+      <button id="btnDuplicateModeSkip" class="btn btn-danger" type="button">
+        No, excluir órdenes duplicadas
+      </button>
+      <button id="btnDuplicateModeCancel" class="btn btn-secondary" type="button">
+        Cancelar
+      </button>
+    </div>
+  </div>
+</div>
 
         <div class="card">
           <h3>Vista previa</h3>
@@ -304,24 +322,83 @@
 
       <!-- AUDITOR DASHBOARD -->
 <section id="view-auditor-dashboard" class="view hidden">
-  <div class="tracker-hero">
-  <div class="tracker-hero-main">
-    <span class="hero-tag">PANEL AUDITOR</span>
-    <h2>Tracker de órdenes</h2>
-    <p>Seleccione una orden pendiente o una orden en progreso asignada a su usuario.</p>
+  <div class="dashboard-hero">
+    <div class="hero-panel">
+      <span class="hero-tag">PANEL AUDITOR</span>
+      <h2>Tracker de órdenes</h2>
+      <p>Visualice todas las órdenes y acceda solo a las que correspondan según su estado y asignación.</p>
+    </div>
+
+    <div class="hero-stat">
+      <span class="hero-stat-label">ESTADO</span>
+      <strong id="auditorTotalOrdenes">0 órdenes</strong>
+    </div>
   </div>
 
-  <div class="tracker-hero-actions">
-    <button id="btnAuditorRefresh" class="btn btn-secondary" type="button">Actualizar</button>
-  </div>
-</div>
+  <div id="auditorEstadoFilters" class="status-filter-bar">
+    <button id="btnAudEstadoPendiente" class="estado-filter-btn estado-pendiente" type="button" data-estado="PENDIENTE">
+      <span class="estado-label">Pendiente</span>
+      <span id="countAudPendiente" class="estado-count">0</span>
+    </button>
 
-<div class="tracker-status-bar">
-  <span class="badge badge-pendiente">Pendiente</span>
-  <span class="badge badge-progreso">En Progreso</span>
-  <span class="badge badge-conforme">Conforme</span>
-  <span class="badge badge-noconforme">No Conforme</span>
-</div>
+    <button id="btnAudEstadoProgreso" class="estado-filter-btn estado-progreso" type="button" data-estado="EN PROGRESO">
+      <span class="estado-label">En Progreso</span>
+      <span id="countAudProgreso" class="estado-count">0</span>
+    </button>
+
+    <button id="btnAudEstadoConforme" class="estado-filter-btn estado-conforme" type="button" data-estado="CONFORME">
+      <span class="estado-label">Conforme</span>
+      <span id="countAudConforme" class="estado-count">0</span>
+    </button>
+
+    <button id="btnAudEstadoNoConforme" class="estado-filter-btn estado-noconforme" type="button" data-estado="NO CONFORME">
+      <span class="estado-label">No Conforme</span>
+      <span id="countAudNoConforme" class="estado-count">0</span>
+    </button>
+  </div>
+
+  <div class="card filters-card-pro">
+    <div class="filters-grid-pro">
+      <div class="form-group">
+        <label for="auditorFilterFecha">Fecha</label>
+        <input type="date" id="auditorFilterFecha">
+      </div>
+
+      <div class="form-group">
+        <label for="auditorFilterGrupo">Grupo</label>
+        <input type="text" id="auditorFilterGrupo" placeholder="Filtrar grupo">
+      </div>
+
+      <div class="form-group">
+        <label for="auditorFilterOrden">Orden</label>
+        <input type="text" id="auditorFilterOrden" placeholder="Filtrar orden">
+      </div>
+
+      <div class="filters-actions-pro">
+        <button id="btnAuditorApplyFilters" class="btn btn-primary btn-icon" type="button">
+          <span class="btn-svg">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="7"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </span>
+          <span>Buscar</span>
+        </button>
+
+        <button id="btnAuditorClearFilters" class="btn btn-light btn-icon" type="button">
+          <span class="btn-svg">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="1 4 1 10 7 10"></polyline>
+              <path d="M3.51 15a9 9 0 1 0 .49-9"></path>
+            </svg>
+          </span>
+          <span>Limpiar</span>
+        </button>
+
+        <button id="btnAuditorRefresh" class="btn btn-secondary" type="button">Actualizar</button>
+      </div>
+    </div>
+  </div>
 
   <div class="card">
     <div class="table-wrap">
