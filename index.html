@@ -106,30 +106,45 @@
         <input type="text" id="adminFilterOrden" placeholder="Filtrar orden">
       </div>
 
-      <div class="filters-actions-pro">
-        <button id="btnAdminApplyFilters" class="btn btn-primary btn-icon" type="button">
-          <span class="btn-svg">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="7"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-          </span>
-          <span>Buscar</span>
-        </button>
+<div class="filters-actions-pro">
+  <button id="btnAdminApplyFilters" class="btn btn-primary btn-icon" type="button">
+    <span class="btn-svg">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="7"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+    </span>
+    <span>Buscar</span>
+  </button>
 
-        <button id="btnAdminClearFilters" class="btn btn-light btn-icon" type="button">
-          <span class="btn-svg">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="1 4 1 10 7 10"></polyline>
-              <path d="M3.51 15a9 9 0 1 0 .49-9"></path>
-            </svg>
-          </span>
-          <span>Limpiar</span>
-        </button>
+  <button id="btnAdminClearFilters" class="btn btn-light btn-icon" type="button">
+    <span class="btn-svg">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="1 4 1 10 7 10"></polyline>
+        <path d="M3.51 15a9 9 0 1 0 .49-9"></path>
+      </svg>
+    </span>
+    <span>Limpiar</span>
+  </button>
 
-        <button id="btnAdminRefresh" class="btn btn-secondary" type="button">Actualizar</button>
-        <button id="btnGoUpload" class="btn btn-primary" type="button">Cargar plantilla</button>
-      </div>
+  <button id="btnAdminRefresh" class="btn btn-secondary" type="button">Actualizar</button>
+<button id="btnGoUpload" class="btn btn-excel-action btn-upload-action" type="button">
+  <span class="btn-excel-icon btn-upload-icon">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 16V4"></path>
+      <path d="M7 9l5-5 5 5"></path>
+      <path d="M4 20h16"></path>
+    </svg>
+  </span>
+  <span>Subir plantilla</span>
+</button>
+
+<button id="btnDescargarRegistroVerificacion" class="btn btn-excel-action btn-download-action" type="button">
+  <span class="btn-excel-icon btn-download-icon">X</span>
+  <span>Exportar</span>
+</button>
+
+</div>
     </div>
   </div>
 
