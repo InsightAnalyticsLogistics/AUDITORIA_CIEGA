@@ -66,6 +66,7 @@ on_('btnDuplicateModeCancel', 'click', closeDuplicateOrdersModal_);
   on_('btnGoUpload', 'click', function () {
     showView_('view-admin-upload');
   });
+  on_('btnDescargarRegistroVerificacion', 'click', handleDescargarRegistroVerificacion_);
 
   on_('btnBackFromUpload', 'click', function () {
     showView_('view-admin-dashboard');
@@ -354,9 +355,9 @@ function renderAdminOrders_(rows) {
         <td>${esc_(r.orden || '')}</td>
         <td>${esc_(r.lineas || 0)}</td>
         <td>${esc_(r.registrado || 0)}</td>
-        <td>${esc_(r.primerConteo || 0)}</td>
-        <td>${esc_(r.segundoConteo || 0)}</td>
-        <td>${esc_(r.tercerConteo || 0)}</td>
+        <td>${esc_(r.primerConteo || '')}</td>
+        <td>${esc_(r.segundoConteo || '')}</td>
+        <td>${esc_(r.tercerConteo || '')}</td>
         <td>${esc_(r.auditorAsignado || '')}</td>
         <td>${esc_(r.comentarioAdmin || '')}</td>
         <td>
@@ -1472,6 +1473,35 @@ async function saveCaptureRows_() {
   } catch (err) {
     hideAppModal_();
     setMessage_('captureMessage', err.message || 'Error guardando pedido.', 'error');
+  }
+}
+async function handleDescargarRegistroVerificacion_() {
+  if (!state.session || state.session.rol !== 'ADMIN') {
+    alert('Acceso denegado.');
+    return;
+  }
+
+  try {
+    showAppModal_('Generando archivo...', true);
+
+    var res = await apiExportarRegistroVerificacion(state.session.token);
+
+    hideAppModal_();
+
+    if (res.downloadUrl) {
+      window.open(res.downloadUrl, '_blank');
+      return;
+    }
+
+    if (res.fileUrl) {
+      window.open(res.fileUrl, '_blank');
+      return;
+    }
+
+    alert('No se recibió la URL de descarga.');
+  } catch (err) {
+    hideAppModal_();
+    alert(err.message || 'Error generando el archivo.');
   }
 }
 
