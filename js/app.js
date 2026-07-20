@@ -31,13 +31,9 @@ function bindEvents_() {
   on_('loginForm', 'submit', handleLogin_);
   on_('btnLogout', 'click', handleLogout_);
 
-  on_('btnGoAdmin', 'click', function () {
-    loadAdminDashboard_();
-  });
+  on_('btnGoAdmin', 'click', handleGoAdminView_);
+  on_('btnGoAuditor', 'click', handleGoAuditorView_);
 
-  on_('btnGoAuditor', 'click', function () {
-    loadAuditorDashboard_();
-  });
   on_('btnDuplicateModeAppend', 'click', function () {
   applyDuplicateImportMode_('APPEND');
 });
@@ -205,6 +201,27 @@ async function handleLogout_() {
       hideAppModal_();
       focus_('usuario');
     }, 700);
+  }
+}
+async function handleGoAdminView_() {
+  try {
+    showAppModal_('CARGANDO VISTA ADMIN...', true);
+    await loadAdminDashboard_();
+  } catch (err) {
+    alert(err.message || 'Error cargando vista admin.');
+  } finally {
+    hideAppModal_();
+  }
+}
+
+async function handleGoAuditorView_() {
+  try {
+    showAppModal_('CARGANDO VISTA AUDITOR...', true);
+    await loadAuditorDashboard_();
+  } catch (err) {
+    alert(err.message || 'Error cargando vista auditor.');
+  } finally {
+    hideAppModal_();
   }
 }
 
@@ -991,6 +1008,8 @@ function renderPreviewRows_() {
       '<th>Valor Inner</th>' +
       '<th>EAN14</th>' +
       '<th>Valor EAN14</th>' +
+      '<th>Cantidad EAN14</th>' +
+      '<th>Cantidad EAN13 o SKU</th>' +
     '</tr>'
   );
 
@@ -1021,6 +1040,8 @@ function renderPreviewRows_() {
         <td>${esc_(r.valorInner)}</td>
         <td>${esc_(r.ean14)}</td>
         <td>${esc_(r.valorEan14)}</td>
+        <td>${esc_(r.cantidadEan14Preview)}</td>
+        <td>${esc_(r.cantidadEan13SkuPreview)}</td>
       </tr>
     `;
   }).join('');
