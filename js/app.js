@@ -19,12 +19,66 @@ const state = {
 
 document.addEventListener('DOMContentLoaded', initApp);
 
-function initApp() {
-  resetClientSession_();
+async function initApp() {
   bindEvents_();
-  showView_('view-login');
-  focus_('usuario');
   updateTopbar_();
+
+  try {
+    showAppModal_('RECUPERANDO SESIÓN...', true);
+    await restoreSession_();
+  } catch (e) {
+  } finally {
+    hideAppModal_();
+  }
+}
+
+function saveSessionLocal_(session) {
+  try {
+    localStorage.setItem('token', session && session.token ? session.token : '');
+    localStorage.setItem('session', JSON.stringify(session || null));
+  } catch (e) {}
+}
+
+function clearSessionLocal_() {
+  try {
+    localStorage.removeItem('token');
+    localStorage.removeItem('session');
+    sessionStorage.removeItem('token');
+  } catch (e) {}
+}
+
+async function restoreSession_() {
+  var token = '';
+
+  try {
+    token = localStorage.getItem('token') || '';
+  } catch (e) {
+    token = '';
+  }
+
+  if (!token) {
+    resetClientStateOnly_();
+    showView_('view-login');
+    focus_('usuario');
+    return;
+  }
+
+  try {
+    var res = await apiGetSesion(token);
+    state.session = res.session;
+    updateTopbar_();
+
+    if (state.session.rol === 'ADMIN') {
+      await loadAdminDashboard_();
+    } else {
+      await loadAuditorDashboard_();
+    }
+  } catch (err) {
+    clearSessionLocal_();
+    resetClientStateOnly_();
+    showView_('view-login');
+    focus_('usuario');
+  }
 }
 
 function bindEvents_() {
@@ -159,6 +213,7 @@ async function handleLogin_(e) {
 
     var res = await apiLogin(usuario, clave);
     state.session = res.session;
+    saveSessionLocal_(state.session);
     updateTopbar_();
 
     if (state.session.rol === 'ADMIN') {
@@ -183,7 +238,8 @@ async function handleLogout_() {
       await apiLogout(state.session.token);
     }
 
-    resetClientSession_();
+    clearSessionLocal_();
+    resetClientStateOnly_();
     updateTopbar_();
     showView_('view-login');
 
@@ -193,7 +249,8 @@ async function handleLogout_() {
     }, 700);
 
   } catch (e) {
-    resetClientSession_();
+    clearSessionLocal_();
+    resetClientStateOnly_();
     updateTopbar_();
     showView_('view-login');
 
@@ -226,6 +283,11 @@ async function handleGoAuditorView_() {
 }
 
 function resetClientSession_() {
+  clearSessionLocal_();
+  resetClientStateOnly_();
+}
+
+function resetClientStateOnly_() {
   state.session = null;
   state.adminOrders = [];
   state.auditorOrders = [];
@@ -240,12 +302,6 @@ function resetClientSession_() {
   state.pendingImportTotalRows = 0;
   setMessage_('uploadPreviewInfo', '');
 
-
-  try {
-    localStorage.removeItem('token');
-    sessionStorage.removeItem('token');
-  } catch (e) {}
-
   clearHTML_('adminOrdersBody');
   clearHTML_('adminOrderLinesBody');
   clearHTML_('adminOrderAuditBody');
@@ -259,6 +315,7 @@ function resetClientSession_() {
   setValue_('usuario', '');
   setValue_('clave', '');
   setMessage_('loginMessage', '');
+  updateTopbar_();
 }
 
 function updateTopbar_() {
@@ -423,102 +480,125 @@ async function deleteAdminOrder_(orden) {
 }
 
 function renderAdminOrderDetail_(res) {
-  state.currentAdminOrder = res;
+  res = res || {};
 
-  toggleHidden_('btnAbrirSegundoConteo', !res.header.puedeAbrirConteo2);
-  toggleHidden_('btnAbrirTercerConteo', !res.header.puedeAbrirConteo3);
+  var header = res.header || {};
+  var lines = Array.isArray(res.lines) ? res.lines : [];
+  var registros = Array.isArray(res.registros) ? res.registros : [];
 
-  setText_('adminDetailOrderTitle', 'Orden ' + (res.header.orden || ''));
-  setText_('detailEstado', res.header.estado || '');
-  setText_('detailGrupo', res.header.grupo || '');
-  setText_('detailOrden', res.header.orden || '');
-  setText_('detailFechaCarga', res.header.fechaCarga || '');
-  setText_('detailAuditorAsignado', res.header.auditorAsignado || '');
-  setText_('detailFechaInicio', res.header.fechaInicio || '');
-  setText_('detailFechaFin', res.header.fechaFin || '');
-  setText_('detailComentarioAdmin', res.header.comentarioAdmin || '');
+  state.currentAdminOrder = {
+    header: header,
+    lines: lines,
+    registros: registros
+  };
+
+  toggleHidden_('btnAbrirSegundoConteo', !header.puedeAbrirConteo2);
+  toggleHidden_('btnAbrirTercerConteo', !header.puedeAbrirConteo3);
+
+  setText_('adminDetailOrderTitle', 'Orden ' + (header.orden || ''));
+  setText_('detailEstado', header.estado || '');
+  setText_('detailGrupo', header.grupo || '');
+  setText_('detailOrden', header.orden || '');
+  setText_('detailFechaCarga', header.fechaCarga || '');
+  setText_('detailAuditorAsignado', header.auditorAsignado || '');
+  setText_('detailFechaInicio', header.fechaInicio || '');
+  setText_('detailFechaFin', header.fechaFin || '');
+  setText_('detailComentarioAdmin', header.comentarioAdmin || '');
 
   var linesBody = document.getElementById('adminOrderLinesBody');
-  linesBody.innerHTML = (res.lines || []).length ? res.lines.map(function (r) {
-    return `
-      <tr class="${rowStatusClass_(r.estadoLinea)}">
-        <td>${esc_(r.codigo || '')}</td>
-        <td>${esc_(r.lote || '')}</td>
-        <td>${esc_(r.fv || '')}</td>
-        <td>${esc_(r.ean13 || '')}</td>
-        <td>${esc_(r.inner || '')}</td>
-        <td>${esc_(r.ean14 || '')}</td>
-        <td>${esc_(r.descripcion || '')}</td>
-        <td>${esc_(r.cantidad || 0)}</td>
-        <td>${esc_(r.conteo1 || 0)}</td>
-        <td>${esc_(r.conteo2 || 0)}</td>
-        <td>${esc_(r.conteo3 || 0)}</td>
-        <td>${statusBadge_(r.estadoLinea || '')}</td>
-        <td>${esc_(r.estadoLote || '')}</td>
-      </tr>
-    `;
-  }).join('') : '<tr><td colspan="13">Sin líneas.</td></tr>';
+  if (linesBody) {
+    linesBody.innerHTML = lines.length ? lines.map(function (r) {
+      return `
+        <tr class="${rowStatusClass_(r.estadoLinea || '')}">
+          <td>${esc_(r.codigo || '')}</td>
+          <td>${esc_(r.lote || '')}</td>
+          <td>${esc_(r.fv || '')}</td>
+          <td>${esc_(r.ean13 || '')}</td>
+          <td>${esc_(r.inner || '')}</td>
+          <td>${esc_(r.ean14 || '')}</td>
+          <td>${esc_(r.descripcion || '')}</td>
+          <td>${esc_(r.cantidad || 0)}</td>
+          <td>${esc_(r.conteo1 == null ? '' : r.conteo1)}</td>
+          <td>${esc_(r.conteo2 == null ? '' : r.conteo2)}</td>
+          <td>${esc_(r.conteo3 == null ? '' : r.conteo3)}</td>
+
+          <td>${statusBadge_(r.estadoLinea || '')}</td>
+          <td>${esc_(r.estadoLote || '')}</td>
+        </tr>
+      `;
+    }).join('') : '<tr><td colspan="13">Sin líneas.</td></tr>';
+  }
 
   var auditBody = document.getElementById('adminOrderAuditBody');
-  auditBody.innerHTML = (res.registros || []).length ? res.registros.map(function (r) {
-    return `
-      <tr class="${priorizadoClass_(r.esPriorizado)}">
-        <td>${esc_(r.fechaHora || '')}</td>
-        <td>${esc_(r.nroConteo || '')}</td>
-        <td>${esc_(r.auditor || '')}</td>
-        <td>${esc_(r.tagIdPaleta || '')}</td>
-        <td>${esc_(r.escaneado || '')}</td>
-        <td>${esc_(r.codigo || '')}</td>
-        <td>${esc_(r.cantidadAuditada || 0)}</td>
-        <td>${esc_(r.loteAuditado || '')}</td>
-        <td>${esc_(r.esPriorizado || '')}</td>
-        <td>${esc_(r.resultadoLinea || '')}</td>
-        <td>${esc_(r.comentario || '')}</td>
-      </tr>
-    `;
-  }).join('') : '<tr><td colspan="11">Sin registros de auditoría.</td></tr>';
+  if (auditBody) {
+    auditBody.innerHTML = registros.length ? registros.map(function (r) {
+      return `
+        <tr class="${priorizadoClass_(r.esPriorizado)}">
+          <td>${esc_(r.fechaHora || '')}</td>
+          <td>${esc_(r.nroConteo || '')}</td>
+          <td>${esc_(r.auditor || '')}</td>
+          <td>${esc_(r.tagIdPaleta || '')}</td>
+          <td>${esc_(r.escaneado || '')}</td>
+          <td>${esc_(r.codigo || '')}</td>
+          <td>${esc_(r.cantidadAuditada || 0)}</td>
+          <td>${esc_(r.loteAuditado || '')}</td>
+          <td>${esc_(r.esPriorizado || '')}</td>
+          <td>${esc_(r.resultadoLinea || '')}</td>
+          <td>${esc_(r.comentario || '')}</td>
+        </tr>
+      `;
+    }).join('') : '<tr><td colspan="11">Sin registros de auditoría.</td></tr>';
+  }
 }
+
 async function handleAbrirSegundoConteo_() {
   if (!state.currentAdminOrder || !state.currentAdminOrder.header) return;
 
   var orden = state.currentAdminOrder.header.orden;
-  var ok = confirm('¿Desea aperturar el 2do conteo para la orden ' + orden + '?');
-  if (!ok) return;
 
-  try {
-    showAppModal_('Aperturando 2do conteo...', true);
-    await apiAbrirSegundoConteo(state.session.token, orden);
-    var refreshed = await apiObtenerDetalleOrdenAdmin_(state.session.token, orden);
-    renderAdminOrderDetail_(refreshed);
-    await loadAdminOrders_();
-    showAppModal_('2do conteo aperturado correctamente.', false);
-    setTimeout(hideAppModal_, 1200);
-  } catch (err) {
-    hideAppModal_();
-    alert(err.message || 'Error aperturando 2do conteo.');
-  }
+  showConfirmModal_(
+    '¿Desea aperturar el 2do conteo para la orden ' + orden + '?',
+    async function () {
+      try {
+        showAppModal_('APERTURANDO SEGUNDO CONTEO...', true);
+        await apiAbrirSegundoConteo(state.session.token, orden);
+        var refreshed = await apiObtenerDetalleOrdenAdmin_(state.session.token, orden);
+        renderAdminOrderDetail_(refreshed);
+        await loadAdminOrders_();
+        showAppModal_('SEGUNDO CONTEO APERTURADO CORRECTAMENTE.', false);
+        setTimeout(hideAppModal_, 1200);
+      } catch (err) {
+        hideAppModal_();
+        alert(err.message || 'Error aperturando 2do conteo.');
+      }
+    }
+  );
 }
 
 async function handleAbrirTercerConteo_() {
   if (!state.currentAdminOrder || !state.currentAdminOrder.header) return;
 
   var orden = state.currentAdminOrder.header.orden;
-  var ok = confirm('¿Desea aperturar el 3er conteo para la orden ' + orden + '?');
-  if (!ok) return;
 
-  try {
-    showAppModal_('Aperturando 3er conteo...', true);
-    await apiAbrirTercerConteo(state.session.token, orden);
-    var refreshed = await apiObtenerDetalleOrdenAdmin_(state.session.token, orden);
-    renderAdminOrderDetail_(refreshed);
-    await loadAdminOrders_();
-    showAppModal_('3er conteo aperturado correctamente.', false);
-    setTimeout(hideAppModal_, 1200);
-  } catch (err) {
-    hideAppModal_();
-    alert(err.message || 'Error aperturando 3er conteo.');
-  }
+  showConfirmModal_(
+    '¿Desea aperturar el 3er conteo para la orden ' + orden + '?',
+    async function () {
+      try {
+        showAppModal_('APERTURANDO TERCER CONTEO...', true);
+        await apiAbrirTercerConteo(state.session.token, orden);
+        var refreshed = await apiObtenerDetalleOrdenAdmin_(state.session.token, orden);
+        renderAdminOrderDetail_(refreshed);
+        await loadAdminOrders_();
+        showAppModal_('TERCER CONTEO APERTURADO CORRECTAMENTE.', false);
+        setTimeout(hideAppModal_, 1200);
+      } catch (err) {
+        hideAppModal_();
+        alert(err.message || 'Error aperturando 3er conteo.');
+      }
+    }
+  );
 }
+
 async function handleReiniciarOrdenAdmin_() {
   if (!state.currentAdminOrder || !state.currentAdminOrder.header) return;
 
@@ -682,7 +762,12 @@ function renderAuditorCapture_(res) {
     ' | Auditor: ' + (res.header.auditorAsignado || '')
   );
 
-  state.captureRows = [buildEmptyCaptureRow_()];
+    if (res.captureRowsSuggested && res.captureRowsSuggested.length) {
+    state.captureRows = res.captureRowsSuggested.map(hydrateCaptureRowFromServer_);
+  } else {
+    state.captureRows = [buildEmptyCaptureRow_()];
+  }
+
   setValue_('captureComentarioGlobal', '');
   renderCaptureGrid_();
   renderCaptureHistory_(res.registros || []);
@@ -897,6 +982,21 @@ function applyDuplicateImportMode_(mode) {
       'info'
     );
   }
+}
+
+function hydrateCaptureRowFromServer_(row) {
+  return {
+    tagIdPaleta: row.tagIdPaleta || '',
+    scan: row.scan || '',
+    codigo: row.codigo || '',
+    cantidad: row.cantidad || '',
+    lote: row.lote || '',
+    esPriorizado: row.esPriorizado || 'NO',
+    resultado: row.resultado || '',
+    _scanTimer: null,
+    _resolving: false,
+    _lastResolvedScan: String(row.scan || '').trim()
+  };
 }
 
 function renderUploadPreviewInfo_() {
